@@ -1,6 +1,7 @@
 package main
 
 import (
+	"gomtgdeckbuilder/deck"
 	"gomtgdeckbuilder/scryfall"
 	"gomtgdeckbuilder/ui"
 	"log"
@@ -46,15 +47,37 @@ func NewQueryInput(onSearch func(query string)) *tview.InputField {
 	return &input
 }
 
+func NewDeckCollectionTable(dc *deck.DeckCollection, onDeckSelected func(deck *deck.Deck), onNewDeckSelected func()) *tview.Table {
+	deckTable := tview.NewTable().SetSelectable(true, false)
+
+	for i, deck := range dc.Decks {
+		deckTable.SetCell(i, 0, tview.NewTableCell(deck.Name).SetAlign(tview.AlignCenter))
+	}
+
+	deckTable.SetCell(len(dc.Decks), 0, tview.NewTableCell("+ Create New Deck").SetAlign(tview.AlignCenter).SetExpansion(1))
+
+	deckTable.SetSelectedFunc(func(row int, column int) {
+		if row == len(dc.Decks) {
+			onNewDeckSelected()
+		} else {
+			onDeckSelected(dc.Decks[row])
+		}
+	})
+
+	return deckTable
+}
+
+func NewDeckDetailsView(dc *deck.Deck) {
+
+}
+
 func main() {
 	app := tview.NewApplication()
 	statusBar := tview.NewTextView().
 		SetDynamicColors(true).
 		SetTextAlign(tview.AlignLeft).
 		SetText("[green]Type a search and press [yellow]Enter[green]. Press [yellow]Q / Esc[green] to quit.")
-	detailsView := ui.NewCardDetailsView(func() {
-		log.Println("ADD")
-	})
+	detailsView := ui.NewCardDetailsView()
 	detailsView.Container.SetBorder(true).SetTitle("Details")
 	resultsCardList := ui.NewCardListView()
 	resultsCardList.Container.SetBorder(true).SetTitle("Results")
@@ -81,8 +104,11 @@ func main() {
 					app.SetFocus(detailsView.Container)
 				})
 
-			statusBar.SetText("[green]Type a search and press [yellow]Enter[green]. Press [yellow]Q / Esc[green] to quit.")
-			app.SetFocus(resultsCardList.CardTable)
+			// Update details view with first card in the list
+			detailsView.Update(resultsCardList.SelectedCard)
+
+			statusBar.SetText("[green]Type a search and press [yellow]Enter[green]. Press [yellow]Esc[green] to quit.")
+			app.SetFocus(resultsCardList.Table.DataTable)
 		}
 	})
 
@@ -103,29 +129,94 @@ func main() {
 	appPages := tview.NewPages()
 	page := 0
 
-	appPages.AddPage("Search", layout, true, page == 0)
+	appPages.AddPage("Search", layout, true, false)
 
+	// Deck Pages
+	deckCollection, err := deck.LoadFromFile("decks.json")
+	if err != nil {
+		statusBar.SetText("[red]FAILED TO LOAD USER DECKS")
+	}
+
+	for _, deck := range deckCollection.Decks {
+		for c, card := range deck.Cards {
+			newCard := card
+			newCard.Card.ParseTypeLine()
+			deck.Cards[c] = newCard
+		}
+	}
+
+	deckDetailsTable := ui.NewDeckDetailsView()
+	var activeDeck *deck.Deck
+
+	deckCollectionTable := NewDeckCollectionTable(
+		deckCollection,
+		func(deck *deck.Deck) {
+			activeDeck = deck
+			deckDetailsTable.SetDeck(deck)
+			appPages.SwitchToPage("DeckList")
+			app.SetFocus(deckDetailsTable.CardList.DataTable)
+		}, func() {
+			activeDeck = deck.NewDeck("New Deck")
+			deckDetailsTable.SetDeck(activeDeck)
+			deckCollection.AddDeck(activeDeck)
+			appPages.SwitchToPage("DeckList")
+			app.SetFocus(deckDetailsTable.CardList.DataTable)
+		})
+
+	deckCollectionTable.SetTitle("Decks").SetBorder(true)
+
+	deckCollectionTableFlex := tview.NewFlex().AddItem(deckCollectionTable, 0, 1, true)
+
+	deckLayout := tview.NewFlex().
+		AddItem(deckCollectionTableFlex, 0, 1, true).
+		AddItem(tview.NewBox().SetTitle("Details").SetBorder(true), 0, 1, false)
+
+	appPages.AddPage("Decks", deckLayout, true, page == 0)
+
+	deckViewLayout := tview.NewFlex().
+		SetDirection(tview.FlexRow).
+		AddItem(deckDetailsTable.Container, 0, 6, true)
+
+	appPages.AddPage("DeckList", deckViewLayout, true, false)
+
+	// App Setup
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		activePage, _ := appPages.GetFrontPage()
+
 		switch event.Key() {
 		case tcell.KeyEscape:
-			if app.GetFocus() == detailsView.Container {
-				app.SetFocus(resultsCardList.CardTable)
-			} else if app.GetFocus() == resultsCardList.CardTable {
-				app.SetFocus(queryInput)
-			} else {
+			if activePage == "Search" {
+				if app.GetFocus() == detailsView.Container {
+					app.SetFocus(resultsCardList.Table.DataTable)
+				} else if app.GetFocus() == resultsCardList.Table.DataTable {
+					app.SetFocus(queryInput)
+				} else {
+					deckDetailsTable.SetDeck(activeDeck)
+					appPages.SwitchToPage("DeckList")
+					app.SetFocus(deckDetailsTable.CardList.DataTable)
+				}
+			} else if activePage == "DeckList" {
+				appPages.SwitchToPage("Decks")
+			} else if activePage == "Decks" {
 				app.Stop()
 			}
 		}
 
 		switch event.Rune() {
-		case 'q':
-			app.Stop()
+		case 's':
+			deckCollection.SaveToFile("decks.json")
+		case 'a':
+			if activePage == "DeckList" {
+				appPages.SwitchToPage("Search")
+			} else if activePage == "Search" {
+				activeDeck.AddCard(resultsCardList.SelectedCard)
+			}
 		}
 
 		return event
 	})
 
-	if err := app.SetRoot(appPages, true).SetFocus(queryInput).Run(); err != nil {
+	if err := app.SetRoot(appPages, true).SetFocus(appPages).Run(); err != nil {
 		panic(err)
 	}
 }

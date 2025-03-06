@@ -5,7 +5,6 @@ import (
 
 	"gomtgdeckbuilder/scryfall"
 
-	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
 
@@ -17,18 +16,16 @@ type CardDetailsView struct {
 	TypeLine          *tview.TextView
 	PowerAndToughness *tview.TextView
 	OracleText        *tview.TextView
-	AddToDeckButton   *tview.Button
 }
 
 // NewCardDetailsView creates a structured card details view.
-func NewCardDetailsView(onAdd func()) *CardDetailsView {
+func NewCardDetailsView() *CardDetailsView {
 	view := &CardDetailsView{
 		Name:              tview.NewTextView().SetDynamicColors(true),
 		Cost:              tview.NewTextView().SetDynamicColors(true).SetTextAlign(tview.AlignRight),
 		TypeLine:          tview.NewTextView(),
 		PowerAndToughness: tview.NewTextView(),
 		OracleText:        tview.NewTextView().SetDynamicColors(true).SetWrap(true),
-		AddToDeckButton:   tview.NewButton("(a) Add to Deck").SetSelectedFunc(onAdd),
 	}
 
 	headerFlex := tview.NewFlex().
@@ -42,18 +39,7 @@ func NewCardDetailsView(onAdd func()) *CardDetailsView {
 		AddItem(headerFlex, 1, 1, false).
 		AddItem(view.TypeLine, 1, 1, false).
 		AddItem(view.PowerAndToughness, 1, 1, false).
-		AddItem(view.OracleText, 0, 5, false).
-		AddItem(view.AddToDeckButton, 1, 1, false)
-
-	view.Container.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		// a -> add to current deck
-		switch event.Rune() {
-		case 'a':
-			onAdd()
-		}
-
-		return event
-	})
+		AddItem(view.OracleText, 0, 5, false)
 
 	return view
 }
