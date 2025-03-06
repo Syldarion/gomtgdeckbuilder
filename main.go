@@ -173,16 +173,23 @@ func main() {
 
 		switch event.Rune() {
 		case 's':
-			deckCollection.SaveToFile("decks.json")
+			if activePage == "Decks" {
+				deckCollection.SaveToFile("decks.json")
+			}
+		case 'r':
+			if activePage == "DeckList" {
+				activeDeck.RemoveCard(deckDetailsTable.SelectedCard)
+				deckDetailsTable.SetDeck(activeDeck)
+			}
 		case 'a':
 			if activePage == "DeckList" {
 				appPages.SwitchToPage("Search")
-			} else if activePage == "Search" {
+			} else if activePage == "Search" && app.GetFocus() != queryInput {
 				activeDeck.AddCard(resultsCardList.SelectedCard)
 			}
 		case 'c':
 			if activePage == "Decks" {
-				activeDeck = deck.NewDeck("New Deck")
+				activeDeck = deck.NewDeck("New Deck", "standard")
 				deckCollection.AddDeck(activeDeck)
 				appPages.SwitchToPage("DeckList")
 			}

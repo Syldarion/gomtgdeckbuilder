@@ -16,8 +16,8 @@ type DeckCollectionView struct {
 func NewDeckCollectionView() *DeckCollectionView {
 	view := &DeckCollectionView{
 		Table: NewFixedHeaderTable(
-			[]string{"Name", "Cards"},
-			[]int{1, 0},
+			[]string{"Name", "Legal", "Cards"},
+			[]int{1, 0, 0},
 		),
 	}
 
@@ -35,7 +35,12 @@ func (dc *DeckCollectionView) SetDeckCollection(collection *deck.DeckCollection)
 func (dc *DeckCollectionView) RefreshView() {
 	tableData := make([][]string, len(dc.Collection.Decks))
 	for i, deck := range dc.Collection.Decks {
-		tableData[i] = []string{deck.Name, strconv.Itoa(deck.DeckSize())}
+		validText := "illegal"
+		if deck.ValidateDeck() {
+			validText = "legal"
+		}
+
+		tableData[i] = []string{deck.Name, validText, strconv.Itoa(deck.DeckSize())}
 	}
 	dc.Table.UpdateData(tableData)
 }

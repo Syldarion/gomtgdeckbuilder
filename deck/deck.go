@@ -2,11 +2,13 @@ package deck
 
 import (
 	"gomtgdeckbuilder/scryfall"
+	"slices"
 )
 
 type Deck struct {
-	Name  string                `json:"name"`
-	Cards map[string]*DeckEntry `json:"cards"`
+	Name   string                `json:"name"`
+	Format string                `json:"format"`
+	Cards  map[string]*DeckEntry `json:"cards"`
 }
 
 type DeckEntry struct {
@@ -14,7 +16,7 @@ type DeckEntry struct {
 	Quantity int           `json:"quantity"`
 }
 
-func NewDeck(name string) *Deck {
+func NewDeck(name string, format string) *Deck {
 	return &Deck{Name: name, Cards: make(map[string]*DeckEntry)}
 }
 
@@ -42,4 +44,51 @@ func (d *Deck) DeckSize() int {
 		count += card.Quantity
 	}
 	return count
+}
+
+func (d *Deck) ValidateDeck() bool {
+	switch d.Format {
+	case "standard":
+		return d.ValidateStandardDeck()
+	case "commander":
+		return d.ValidateCommanderDeck()
+	}
+
+	return false
+}
+
+func (d *Deck) ValidateStandardDeck() bool {
+	if d.DeckSize() < 60 {
+		return false
+	}
+
+	for _, card := range d.Cards {
+		if !slices.Contains(card.Card.LegalFormats(), "standard") {
+			return false
+		}
+
+		if !slices.Contains(card.Card.SuperTypes, "Basic") && card.Quantity > 4 {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (d *Deck) ValidateCommanderDeck() bool {
+	if d.DeckSize() < 100 {
+		return false
+	}
+
+	for _, card := range d.Cards {
+		if !slices.Contains(card.Card.LegalFormats(), "commander") {
+			return false
+		}
+
+		if card.Quantity > 1 {
+			return false
+		}
+	}
+
+	return true
 }

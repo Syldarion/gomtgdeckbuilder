@@ -2,6 +2,7 @@ package ui
 
 import (
 	"gomtgdeckbuilder/deck"
+	"gomtgdeckbuilder/scryfall"
 	"strconv"
 	"strings"
 
@@ -9,10 +10,11 @@ import (
 )
 
 type DeckDetailsView struct {
-	Container   *tview.Flex
-	Name        *tview.TextView
-	CardList    *FixedHeaderTable
-	CardDetails *CardDetailsView
+	Container    *tview.Flex
+	Name         *tview.TextView
+	CardList     *FixedHeaderTable
+	CardDetails  *CardDetailsView
+	SelectedCard scryfall.Card
 }
 
 func NewDeckDetailsView() *DeckDetailsView {
@@ -65,6 +67,7 @@ func (dv *DeckDetailsView) SetDeck(deck *deck.Deck) {
 	dv.CardList.SetSelectionChangedFunc(func(row int, col int) {
 		nameText := strings.Trim(dv.CardList.DataTable.GetCell(row, 0).Text, " ")
 		cardAtRow := deck.Cards[nameText].Card
+		dv.SelectedCard = cardAtRow
 		dv.CardDetails.Update(cardAtRow)
 	})
 }

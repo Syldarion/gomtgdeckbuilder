@@ -21,7 +21,8 @@ type Card struct {
 	ImageURIs  struct {
 		ArtCrop string `json:"art_crop"`
 	} `json:"image_uris"`
-	InCurrentDeck bool `json:"-"`
+	InCurrentDeck bool              `json:"-"`
+	Legalities    map[string]string `json:"legalities"`
 }
 
 func (c *Card) ParseTypeLine() {
@@ -32,6 +33,16 @@ func (c *Card) ParseTypeLine() {
 	} else {
 		c.SubTypes = []string{}
 	}
+}
+
+func (c *Card) LegalFormats() []string {
+	formats := []string{}
+	for format, legal := range c.Legalities {
+		if legal == "legal" {
+			formats = append(formats, format)
+		}
+	}
+	return formats
 }
 
 func (c *Card) PrettyMana() string {
