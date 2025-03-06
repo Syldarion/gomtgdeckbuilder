@@ -47,30 +47,6 @@ func NewQueryInput(onSearch func(query string)) *tview.InputField {
 	return &input
 }
 
-func NewDeckCollectionTable(dc *deck.DeckCollection, onDeckSelected func(deck *deck.Deck), onNewDeckSelected func()) *tview.Table {
-	deckTable := tview.NewTable().SetSelectable(true, false)
-
-	for i, deck := range dc.Decks {
-		deckTable.SetCell(i, 0, tview.NewTableCell(deck.Name).SetAlign(tview.AlignCenter))
-	}
-
-	deckTable.SetCell(len(dc.Decks), 0, tview.NewTableCell("+ Create New Deck").SetAlign(tview.AlignCenter).SetExpansion(1))
-
-	deckTable.SetSelectedFunc(func(row int, column int) {
-		if row == len(dc.Decks) {
-			onNewDeckSelected()
-		} else {
-			onDeckSelected(dc.Decks[row])
-		}
-	})
-
-	return deckTable
-}
-
-func NewDeckDetailsView(dc *deck.Deck) {
-
-}
-
 func main() {
 	app := tview.NewApplication()
 	statusBar := tview.NewTextView().
@@ -148,27 +124,19 @@ func main() {
 	deckDetailsTable := ui.NewDeckDetailsView()
 	var activeDeck *deck.Deck
 
-	deckCollectionTable := NewDeckCollectionTable(
-		deckCollection,
-		func(deck *deck.Deck) {
-			activeDeck = deck
-			deckDetailsTable.SetDeck(deck)
-			appPages.SwitchToPage("DeckList")
-			app.SetFocus(deckDetailsTable.CardList.DataTable)
-		}, func() {
-			activeDeck = deck.NewDeck("New Deck")
-			deckDetailsTable.SetDeck(activeDeck)
-			deckCollection.AddDeck(activeDeck)
-			appPages.SwitchToPage("DeckList")
-			app.SetFocus(deckDetailsTable.CardList.DataTable)
-		})
+	deckCollectionView := ui.NewDeckCollectionView()
+	deckCollectionView.Table.SetSelectedFunc(func(row int, col int) {
+		activeDeck = deckCollection.Decks[row]
+		deckDetailsTable.SetDeck(activeDeck)
+		appPages.SwitchToPage("DeckList")
+		app.SetFocus(deckDetailsTable.CardList.DataTable)
+	})
+	deckCollectionView.SetDeckCollection(deckCollection)
 
-	deckCollectionTable.SetTitle("Decks").SetBorder(true)
-
-	deckCollectionTableFlex := tview.NewFlex().AddItem(deckCollectionTable, 0, 1, true)
+	deckCollectionView.Container.SetTitle("Decks").SetBorder(true)
 
 	deckLayout := tview.NewFlex().
-		AddItem(deckCollectionTableFlex, 0, 1, true).
+		AddItem(deckCollectionView.Container, 0, 1, true).
 		AddItem(tview.NewBox().SetTitle("Details").SetBorder(true), 0, 1, false)
 
 	appPages.AddPage("Decks", deckLayout, true, page == 0)
@@ -196,6 +164,7 @@ func main() {
 					app.SetFocus(deckDetailsTable.CardList.DataTable)
 				}
 			} else if activePage == "DeckList" {
+				deckCollectionView.RefreshView()
 				appPages.SwitchToPage("Decks")
 			} else if activePage == "Decks" {
 				app.Stop()
@@ -210,6 +179,12 @@ func main() {
 				appPages.SwitchToPage("Search")
 			} else if activePage == "Search" {
 				activeDeck.AddCard(resultsCardList.SelectedCard)
+			}
+		case 'c':
+			if activePage == "Decks" {
+				activeDeck = deck.NewDeck("New Deck")
+				deckCollection.AddDeck(activeDeck)
+				appPages.SwitchToPage("DeckList")
 			}
 		}
 

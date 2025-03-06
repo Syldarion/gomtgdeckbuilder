@@ -35,3 +35,11 @@ func (d *Deck) RemoveCard(card scryfall.Card) {
 		}
 	}
 }
+
+func (d *Deck) DeckSize() int {
+	count := 0
+	for _, card := range d.Cards {
+		count += card.Quantity
+	}
+	return count
+}

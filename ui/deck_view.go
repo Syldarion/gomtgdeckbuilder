@@ -2,6 +2,8 @@ package ui
 
 import (
 	"gomtgdeckbuilder/deck"
+	"strconv"
+	"strings"
 
 	"github.com/rivo/tview"
 )
@@ -17,8 +19,8 @@ func NewDeckDetailsView() *DeckDetailsView {
 	view := &DeckDetailsView{
 		Name: tview.NewTextView().SetDynamicColors(true),
 		CardList: NewFixedHeaderTable(
-			[]string{"Name", "Type", "Mana Cost"},
-			[]int{1, 0, 0},
+			[]string{"Name", "Type", "Mana Cost", "Quantity"},
+			[]int{1, 0, 0, 0},
 		),
 		CardDetails: NewCardDetailsView(),
 	}
@@ -55,14 +57,14 @@ func (dv *DeckDetailsView) SetDeck(deck *deck.Deck) {
 
 	for _, card := range deck.Cards {
 		cardData := card.Card
-		newTableData[i] = []string{cardData.Name, cardData.TypeLine, cardData.PrettyMana()}
+		newTableData[i] = []string{cardData.Name, cardData.TypeLine, cardData.PrettyMana(), strconv.Itoa(card.Quantity)}
 		i++
 	}
 
 	dv.CardList.UpdateData(newTableData)
 	dv.CardList.SetSelectionChangedFunc(func(row int, col int) {
-		nameText := dv.CardList.DataTable.GetCell(row, 0)
-		cardAtRow := deck.Cards[nameText.Text].Card
+		nameText := strings.Trim(dv.CardList.DataTable.GetCell(row, 0).Text, " ")
+		cardAtRow := deck.Cards[nameText].Card
 		dv.CardDetails.Update(cardAtRow)
 	})
 }
